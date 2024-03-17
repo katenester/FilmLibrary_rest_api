@@ -1,8 +1,11 @@
 package user
 
 import (
+	"encoding/json"
 	"github.com/julienschmidt/httprouter"
 	"github.com/katenester/FilmLibrary_rest_api/internal/handlers"
+	"github.com/katenester/FilmLibrary_rest_api/internal/repository/postgres"
+	"log"
 	"net/http"
 )
 
@@ -40,7 +43,51 @@ func (h *handler) Register(router *httprouter.Router) {
 func (h *handler) GetActorList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Проставляем заголовки
 	w.WriteHeader(200)
-	w.Write([]byte("This is list of users"))
+	// Устанавливаем соединение с бд
+	db := postgres.SetupDB()
+	// Закрываем взаимодействие с бд в конце
+	defer func() {
+		err := db.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
+	rows, err := db.Query(`
+    SELECT
+        a.actor_id,
+        a.name AS actor_name,
+        m.movie_id,
+        m.title AS movie_title
+    FROM
+        Actors a
+    JOIN
+        MovieActors ma ON a.actor_id = ma.actor_id
+    JOIN
+        Movies m ON ma.movie_id = m.movie_id;
+`)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		rows.Close()
+	}()
+	a := make([]Actors, 0)
+	for rows.Next() {
+		var b Actors
+		if err := rows.Scan(&b); err != nil {
+			log.Fatal(err)
+		} else {
+			a = append(a, b)
+		}
+	}
+	// Преобразуем срез в формат JSON
+	jsonResponse, err := json.Marshal(actors)
+	if err != nil {
+		panic(err)
+	}
+	// Записываем JSON-ответ в ResponseWriter
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonResponse)
 }
 
 // GetMovieList получает список фильмов.
