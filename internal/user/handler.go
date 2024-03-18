@@ -31,17 +31,17 @@ func NewHandler() handlers.Handler {
 
 // Register - регистрация обработчиков handler
 func (h *handler) Register(router *httprouter.Router) {
-	// регистрируем пути
-	router.GET(actors, h.GetActorList)
-	router.GET(movies, h.GetMovieList)
-	router.POST(actor, h.CreateActor)
-	router.POST(movie, h.CreateMovie)
-	router.PUT(actorURL, h.UpdateActor)
-	router.PUT(movieURL, h.UpdateMovie)
-	router.DELETE(actorURL, h.DeleteActor)
-	router.DELETE(movieURL, h.DeleteMovie)
-	router.GET(actorsSearch, h.SearchMovies)
-	router.GET(moviesSearch, h.SearchActors)
+	// регистрируем пути с middleware, для проверки уровня доступа
+	router.GET(actors, RoleBasedAuthMiddleware([]string{"admin", "user"}, h.GetActorList))
+	router.GET(movies, RoleBasedAuthMiddleware([]string{"admin", "user"}, h.GetMovieList))
+	router.POST(actor, RoleBasedAuthMiddleware([]string{"admin"}, h.CreateActor))
+	router.POST(movie, RoleBasedAuthMiddleware([]string{"admin"}, h.CreateMovie))
+	router.PUT(actorURL, RoleBasedAuthMiddleware([]string{"admin"}, h.UpdateActor))
+	router.PUT(movieURL, RoleBasedAuthMiddleware([]string{"admin"}, h.UpdateMovie))
+	router.DELETE(actorURL, RoleBasedAuthMiddleware([]string{"admin"}, h.DeleteActor))
+	router.DELETE(movieURL, RoleBasedAuthMiddleware([]string{"admin"}, h.DeleteMovie))
+	router.GET(actorsSearch, RoleBasedAuthMiddleware([]string{"admin", "user"}, h.SearchMovies))
+	router.GET(moviesSearch, RoleBasedAuthMiddleware([]string{"admin", "user"}, h.SearchActors))
 }
 
 // GetActorList получает список актёров.
