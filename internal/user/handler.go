@@ -44,29 +44,30 @@ func (h *handler) Register(router *httprouter.Router) {
 func (h *handler) GetActorList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	//Проставить заголовки w.WriteHeader(200)
 	// Устанавливаем соединение с бд
+	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
 	// Закрываем взаимодействие с бд в конце
 	defer func() {
+		log.Println("Закрытие подключения")
 		err := db.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
+	log.Println("Отправка запроса на получение списка актёров")
 	rows, err := db.Query(`
     SELECT
-        a.actor_id,
-        a.name AS actor_name,
-        m.movie_id,
-        m.title AS movie_title
+        name AS actor_name,
+        title AS movie_title
     FROM
-        actors a
+        actors
     JOIN
-        movieactors ma ON a.actor_id = ma.actor_id
+        movieactors  ON actors.actor_id = movieactors.actor_id
     JOIN
-        movies m ON ma.movie_id = m.movie_id;
+        movies ON movies.movie_id = movieactors.movie_id;
 `)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer func() {
 		rows.Close()
@@ -75,32 +76,36 @@ func (h *handler) GetActorList(w http.ResponseWriter, r *http.Request, params ht
 	for rows.Next() {
 		var b Actors
 		if err := rows.Scan(&b); err != nil {
-			log.Fatal(err)
-		} else {
 			a = append(a, b)
+		} else {
+			log.Fatal(err)
 		}
 	}
 	// Преобразуем срез в формат JSON
 	jsonResponse, err := json.Marshal(a)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	// Записываем JSON-ответ в ResponseWriter
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	w.Write(jsonResponse)
 }
 
 // GetMovieList получает список фильмов. По умолчанию - сортировка по рейтингу
 func (h *handler) GetMovieList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	// Устанавливаем соединение с бд
+	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
 	// Закрываем взаимодействие с бд в конце
 	defer func() {
+		log.Println("Закрытие подключения")
 		err := db.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
+	log.Println("Отправка запроса на получение списка фильмов")
 	rows, err := db.Query(`SELECT * FROM movies ORDER BY rating DESC;`)
 	if err != nil {
 		panic(err)
@@ -122,6 +127,7 @@ func (h *handler) GetMovieList(w http.ResponseWriter, r *http.Request, params ht
 	if err != nil {
 		panic(err)
 	}
+	w.WriteHeader(http.StatusOK)
 	// Записываем JSON-ответ в ResponseWriter
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonResponse)
@@ -133,31 +139,32 @@ func (h *handler) CreateActor(w http.ResponseWriter, r *http.Request, params htt
 	var a Actors
 	err := json.NewDecoder(r.Body).Decode(&a)
 	if err != nil {
-		http.Error(w, "Failed to decode JSON data", http.StatusBadRequest)
+		http.Error(w, "Ошибка декодирования JSON данных", http.StatusBadRequest)
+		log.Fatal(err)
 		return
 	}
-
 	// Добавляем нового актёра
 	// Устанавливаем соединение с бд
+	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
 	// Закрываем взаимодействие с бд в конце
 	defer func() {
+		log.Println("Закрытие бд")
 		err := db.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
-	_, err := db.Query(`INSERT INTO actors (name, gender, date_of_birth) VALUES (a.ActorsName,a.ActorsGender,a.ActorsDateOfBirth);`)
+	_, err = db.Query("INSERT INTO actors (name, gender, date_of_birth) VALUES ($1, $2, $3);", a.ActorsName, a.ActorsGender, a.ActorsDateOfBirth)
 	if err != nil {
 		http.Error(w, "Database entry error", http.StatusBadRequest)
+		log.Fatal(err)
 		return
 	}
-	// Логирование
-	log.Printf("Received actor: %+v", a)
-
+	log.Printf("Принятый актер: %+v", a)
 	// Возвращаем ответ
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Actor created successfully"))
+	w.Write([]byte("Актер успешно создан"))
 }
 
 // CreateMovie добавляет информацию о фильме.
@@ -166,121 +173,170 @@ func (h *handler) CreateMovie(w http.ResponseWriter, r *http.Request, params htt
 	var b Movie
 	err := json.NewDecoder(r.Body).Decode(&b)
 	if err != nil {
-		http.Error(w, "Failed to decode JSON data", http.StatusBadRequest)
+		http.Error(w, "Ошибка декодирования JSON данных", http.StatusBadRequest)
+		log.Fatal(err)
 		return
 	}
-	// Добавляем нового актёра
-	// Устанавливаем соединение с бд
+	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
-	// Закрываем взаимодействие с бд в конце
 	defer func() {
+		log.Println("Закрытие бд")
 		err := db.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
-	_, err := db.Query(`INSERT INTO movies (title, description, release_date,rating) VALUES (b.MovieName,b.MovieDescription,b.MovieReleaseDate,b.MovieRating);`)
+	_, err = db.Query("INSERT INTO movies (title, description, release_date,rating) VALUES ($1, $2,$3, $4);", b.MovieName, b.MovieDescription, b.MovieReleaseDate, b.MovieRating)
 	if err != nil {
 		http.Error(w, "Database entry error", http.StatusBadRequest)
+		log.Fatal(err)
 		return
 	}
+	// Получение ID только что добавленного фильма
+	var movieID int
+	row := db.QueryRow("SELECT lastval()")
+	err = row.Scan(&movieID)
+	if err != nil {
+		http.Error(w, "Ошибка получения ID последнего вставленного фильма", http.StatusInternalServerError)
+		log.Fatal(err)
+		return
+	}
+
+	// Вставка данных о связи фильма и актёров в таблицу "movieactors"
+	for _, actorID := range b.MovieActor {
+		_, err = db.Query("INSERT INTO movieactors (movie_id, actor_id) VALUES ($1, $2);", movieID, actorID.ActorsID)
+		if err != nil {
+			http.Error(w, "Ошибка вставки данных в базу данных", http.StatusBadRequest)
+			log.Fatal(err)
+			return
+		}
+	}
+
 	// Логирование
-	log.Printf("Received actor: %+v", b)
+	log.Printf("Принятый фильм: %+v", b)
 	// Возвращаем ответ
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Actor created successfully"))
+	w.Write([]byte("Фильм успешно создан"))
 }
 
 // UpdateActor изменяет информацию об актере
 func (h *handler) UpdateActor(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	err := r.ParseForm()
-	if err != nil {
-		log.Println(err)
-	}
+	// Прочитать JSON данные из тела запроса
 	var a Actors
-	a.ActorsID = r.FormValue("actorid")
-	a.ActorsName = r.FormValue("actorname")
-	a.ActorsGender = r.FormValue("actorgender")
-	a.ActorsDateOfBirth = r.FormValue("actordateofbirth")
-
+	err := json.NewDecoder(r.Body).Decode(&a)
+	if err != nil {
+		http.Error(w, "Ошибка декодирования JSON данных", http.StatusBadRequest)
+		log.Fatal(err)
+		return
+	}
+	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
-	// Закрываем взаимодействие с бд в конце
 	defer func() {
+		log.Println("Закрытие бд")
 		err := db.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
-	_, err = db.Exec("update actors set name=?, gender=?, date_of_birth = ? where actor_id = ?", a.ActorsName, a.ActorsGender, a.ActorsDateOfBirth, a.ActorsID)
+	// Изменение в actors
+	_, err = db.Exec("UPDATE actors SET name=$1, gender=$2, date_of_birth = $3 WHERE actor_id = $4", a.ActorsName, a.ActorsGender, a.ActorsDateOfBirth, a.ActorsID)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, "Database entry error", http.StatusBadRequest)
+		log.Fatal(err)
+		return
 	}
-	http.Redirect(w, r, "/", 301)
+	log.Printf("Измененный актер: %+v", a)
+	// Возвращаем ответ
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Актер успешно изменен"))
 }
 
 // UpdateMovie изменяет информацию о фильме
 func (h *handler) UpdateMovie(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	err := r.ParseForm()
+	// Прочитать JSON данные из тела запроса
+	var a Movie
+	err := json.NewDecoder(r.Body).Decode(&a)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, "Ошибка декодирования JSON данных", http.StatusBadRequest)
+		log.Fatal(err)
+		return
 	}
-	var b Movie
-	b.MovieID = r.FormValue("movieid")
-	b.MovieName = r.FormValue("moviename")
-	b.MovieDescription = r.FormValue("moviedescription")
-	b.MovieReleaseDate = r.FormValue("release_date")
-	b.MovieRating = r.FormValue("movierating")
+	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
-	// Закрываем взаимодействие с бд в конце
 	defer func() {
+		log.Println("Закрытие бд")
 		err := db.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
-	_, err = db.Exec("update movies set title=?, description=?, release_date = ?,rating=? where movie_id = ?", b.MovieName, b.MovieDescription, b.MovieReleaseDate, b.MovieRating, b.MovieID)
+	// Изменение в movie
+	_, err = db.Exec("UPDATE movies SET title=$1, description=$2, release_date = $3,rating=$4 WHERE movie_id = $5", a.MovieName, a.MovieDescription, a.MovieReleaseDate, a.MovieRating, a.MovieID)
 	if err != nil {
-		log.Println(err)
+		http.Error(w, "Database entry error", http.StatusBadRequest)
+		log.Fatal(err)
+		return
 	}
-	http.Redirect(w, r, "/", 301)
+	log.Printf("Измененный фильм: %+v", a)
+	// Возвращаем ответ
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Фильм успешно изменен"))
 }
 
 // DeleteActor удаляет информацию об актёре
 func (h *handler) DeleteActor(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	// Устанавливаем соединение с бд
+	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
-	// Закрываем взаимодействие с бд в конце
 	defer func() {
+		log.Println("Закрытие бд")
 		err := db.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
 	_, err := db.Exec("delete from actors where actor_id = ?", id)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, "Database entry error", http.StatusBadRequest)
+		return
 	}
-	http.Redirect(w, r, "/", 301)
+	_, err = db.Exec("delete from movieactors where actor_id = ?", id)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Database entry error", http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Актёр успешно удалён"))
 }
 
 // DeleteMovie удаляет информацию о фильме
 func (h *handler) DeleteMovie(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	// Устанавливаем соединение с бд
+	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
-	// Закрываем взаимодействие с бд в конце
 	defer func() {
+		log.Println("Закрытие бд")
 		err := db.Close()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}()
 	_, err := db.Exec("delete from movies where movie_id = ?", id)
 	if err != nil {
 		log.Println(err)
+		http.Error(w, "Database entry error", http.StatusBadRequest)
+		return
 	}
-	http.Redirect(w, r, "/", 301)
+	_, err = db.Exec("delete from movieactors where movie_id = ?", id)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Database entry error", http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Фильм успешно удалён"))
 }
