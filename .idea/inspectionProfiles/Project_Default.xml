@@ -1,0 +1,29 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="IncorrectHttpHeaderInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="customHeaders">
+        <set>
+          <option value="X-User-Role" />
+          <option value="  &quot;password&quot;" />
+          <option value="  &quot;email&quot;" />
+          <option value="  &quot;name&quot;" />
+          <option value="{" />
+          <option value="}" />
+          <option value="&gt; {%" />
+          <option value="    client.test(&quot;Request executed successfully&quot;, function () {" />
+          <option value="        client.assert(response.status === 200, &quot;Response status is not 201&quot;);" />
+          <option value="    });" />
+          <option value="%}" />
+          <option value="  &quot;actorname&quot;" />
+          <option value="  &quot;actordateofbirth&quot;" />
+          <option value="  &quot;actorgender&quot;" />
+          <option value="        client.assert(response.status === 201, &quot;Response status is not 201&quot;);" />
+          <option value="  &quot;actorid&quot;" />
+          <option value="[{" />
+          <option value="}]" />
+        </set>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>

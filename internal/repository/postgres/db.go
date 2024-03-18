@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"log"
 )
 
 const (
@@ -16,7 +17,7 @@ func SetupDB() *sql.DB {
 	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", DB_USER, DB_PASSWORD, DB_NAME)
 	db, err := sql.Open("postgres", dbinfo)
 	if err != nil {
-		panic(err)
+		log.Fatalln("Ошибка связи с бд:", err)
 	}
 	return db
 }

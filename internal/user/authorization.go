@@ -9,6 +9,7 @@ import (
 // RoleBasedAuthMiddleware проверяет роль пользователя и разрешает или запрещает доступ к ресурсам.
 func RoleBasedAuthMiddleware(allowedRoles []string, next httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		log.Println("Проверка валидации")
 		// Роли пользователя передаются в заголовке "X-User-Role".
 		userRole := r.Header.Get("X-User-Role")
 
@@ -22,6 +23,7 @@ func RoleBasedAuthMiddleware(allowedRoles []string, next httprouter.Handle) http
 		}
 		// Если у пользователя есть роль, пропускаем запрос к следующему обработчику.
 		if roleAllowed {
+			log.Println("Проверка пройдена.Переход к обработчику")
 			next(w, r, params)
 		} else {
 			// Если у пользователя нет необходимой роли, возвращаем ошибку доступа.

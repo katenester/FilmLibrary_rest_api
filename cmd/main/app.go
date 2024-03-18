@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+//	@title			FilLibrary
+//	@version		1.0
+//  @host localhost:8080
+
+// // @securityDefinitions X-User-Role
+
 func main() {
 	log.Println("create router")
 	// Роутер (маршрутезатор)

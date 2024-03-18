@@ -6,6 +6,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/katenester/FilmLibrary_rest_api/internal/handlers"
 	"github.com/katenester/FilmLibrary_rest_api/internal/repository/postgres"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 )
@@ -46,6 +47,7 @@ func (h *handler) Register(router *httprouter.Router) {
 
 // GetActorList получает список актёров.
 func (h *handler) GetActorList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в GetActorList")
 	//Проставить заголовки w.WriteHeader(200)
 	// Устанавливаем соединение с бд
 	log.Println("Подключение к бд")
@@ -98,6 +100,7 @@ func (h *handler) GetActorList(w http.ResponseWriter, r *http.Request, params ht
 
 // GetMovieList получает список фильмов. По умолчанию - сортировка по рейтингу
 func (h *handler) GetMovieList(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в GetMovieList")
 	// Устанавливаем соединение с бд
 	log.Println("Подключение к бд")
 	db := postgres.SetupDB()
@@ -139,12 +142,13 @@ func (h *handler) GetMovieList(w http.ResponseWriter, r *http.Request, params ht
 
 // CreateActor добавляет информацию об актере.
 func (h *handler) CreateActor(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в CreateActor")
 	// Прочитать JSON данные из тела запроса
 	var a Actors
 	err := json.NewDecoder(r.Body).Decode(&a)
 	if err != nil {
 		http.Error(w, "Ошибка декодирования JSON данных", http.StatusBadRequest)
-		log.Fatal(err)
+		log.Println("Ошибка декодирования JSON данных", err)
 		return
 	}
 	// Добавляем нового актёра
@@ -156,13 +160,13 @@ func (h *handler) CreateActor(w http.ResponseWriter, r *http.Request, params htt
 		log.Println("Закрытие бд")
 		err := db.Close()
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 	}()
 	_, err = db.Query("INSERT INTO actors (name, gender, date_of_birth) VALUES ($1, $2, $3);", a.ActorsName, a.ActorsGender, a.ActorsDateOfBirth)
 	if err != nil {
 		http.Error(w, "Database entry error", http.StatusBadRequest)
-		log.Fatal(err)
+		log.Println("Database entry error", err)
 		return
 	}
 	log.Printf("Принятый актер: %+v", a)
@@ -173,12 +177,13 @@ func (h *handler) CreateActor(w http.ResponseWriter, r *http.Request, params htt
 
 // CreateMovie добавляет информацию о фильме.
 func (h *handler) CreateMovie(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в CreateMovie")
 	// Прочитать JSON данные из тела запроса
 	var b Movie
 	err := json.NewDecoder(r.Body).Decode(&b)
 	if err != nil {
 		http.Error(w, "Ошибка декодирования JSON данных", http.StatusBadRequest)
-		log.Fatal(err)
+		log.Println("Ошибка декодирования JSON данных", err)
 		return
 	}
 	log.Println("Подключение к бд")
@@ -187,13 +192,13 @@ func (h *handler) CreateMovie(w http.ResponseWriter, r *http.Request, params htt
 		log.Println("Закрытие бд")
 		err := db.Close()
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 	}()
 	_, err = db.Query("INSERT INTO movies (title, description, release_date,rating) VALUES ($1, $2,$3, $4);", b.MovieName, b.MovieDescription, b.MovieReleaseDate, b.MovieRating)
 	if err != nil {
 		http.Error(w, "Database entry error", http.StatusBadRequest)
-		log.Fatal(err)
+		log.Println("Database entry error", err)
 		return
 	}
 	// Получение ID только что добавленного фильма
@@ -202,7 +207,7 @@ func (h *handler) CreateMovie(w http.ResponseWriter, r *http.Request, params htt
 	err = row.Scan(&movieID)
 	if err != nil {
 		http.Error(w, "Ошибка получения ID последнего вставленного фильма", http.StatusInternalServerError)
-		log.Fatal(err)
+		log.Println("Ошибка получения ID последнего вставленного фильма", err)
 		return
 	}
 
@@ -211,7 +216,7 @@ func (h *handler) CreateMovie(w http.ResponseWriter, r *http.Request, params htt
 		_, err = db.Query("INSERT INTO movieactors (movie_id, actor_id) VALUES ($1, $2);", movieID, actorID.ActorsID)
 		if err != nil {
 			http.Error(w, "Ошибка вставки данных в базу данных", http.StatusBadRequest)
-			log.Fatal(err)
+			log.Println("Ошибка вставки данных в базу данных", err)
 			return
 		}
 	}
@@ -225,6 +230,7 @@ func (h *handler) CreateMovie(w http.ResponseWriter, r *http.Request, params htt
 
 // UpdateActor изменяет информацию об актере
 func (h *handler) UpdateActor(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в UpdateActor")
 	// Прочитать JSON данные из тела запроса
 	var a Actors
 	err := json.NewDecoder(r.Body).Decode(&a)
@@ -257,6 +263,7 @@ func (h *handler) UpdateActor(w http.ResponseWriter, r *http.Request, params htt
 
 // UpdateMovie изменяет информацию о фильме
 func (h *handler) UpdateMovie(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в UpdateMovie")
 	// Прочитать JSON данные из тела запроса
 	var a Movie
 	err := json.NewDecoder(r.Body).Decode(&a)
@@ -289,6 +296,7 @@ func (h *handler) UpdateMovie(w http.ResponseWriter, r *http.Request, params htt
 
 // DeleteActor удаляет информацию об актёре
 func (h *handler) DeleteActor(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в DeleteActor")
 	vars := mux.Vars(r)
 	id := vars["id"]
 	log.Println("Подключение к бд")
@@ -318,6 +326,7 @@ func (h *handler) DeleteActor(w http.ResponseWriter, r *http.Request, params htt
 
 // DeleteMovie удаляет информацию о фильме
 func (h *handler) DeleteMovie(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в DeleteMovie")
 	vars := mux.Vars(r)
 	id := vars["id"]
 	log.Println("Подключение к бд")
@@ -347,6 +356,7 @@ func (h *handler) DeleteMovie(w http.ResponseWriter, r *http.Request, params htt
 
 // SearchMovies выполняет поиск фильмов по фрагменту названия
 func (h *handler) SearchMovies(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в SearchMovies")
 	query := r.URL.Query().Get("q")
 	if query == "" {
 		http.Error(w, "Требуется параметр запроса q", http.StatusBadRequest)
@@ -393,6 +403,7 @@ func (h *handler) SearchMovies(w http.ResponseWriter, r *http.Request, params ht
 
 // SearchActors выполняет поиск актёров по фрагменту имени
 func (h *handler) SearchActors(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	log.Println("Вход в SearchActors")
 	query := r.URL.Query().Get("q")
 	if query == "" {
 		http.Error(w, "Требуется параметр запроса q", http.StatusBadRequest)

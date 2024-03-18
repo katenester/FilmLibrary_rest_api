@@ -1,0 +1,77 @@
+### GET /actors -- Получение списка актёров.
+GET http://localhost:8080/actors
+X-User-Role: user
+Content-Type: application/json
+
+{}
+> {%
+    client.test("Request executed successfully", function () {
+        client.assert(response.status === 200, "Response status is not 201");
+    });
+%}
+### GET /movies --Получение списка фильмов с возможностью сортировки(путь для сортировки по умолчанию )
+GET http://localhost:8080/movies
+X-User-Role: user
+Content-Type: application/json
+
+{}
+> {%
+    client.test("Request executed successfully", function () {
+        client.assert(response.status === 200, "Response status is not 201");
+    });
+%}
+### //GET /search/actors?q={query} --Поиск актёра по фрагменту имени.
+GET http://localhost:8080/search/movies?q=Pitt
+X-User-Role: user
+Content-Type: application/json
+
+{}
+> {%
+    client.test("Request executed successfully", function () {
+        client.assert(response.status === 200, "Response status is not 201");
+    });
+%}
+###GET /search/movies?q={query} --Поиск фильма по фрагменту названия.
+GET http://localhost:8080/search/actors?q=Titanic
+X-User-Role: user
+Content-Type: application/json
+
+{}
+> {%
+    client.test("Request executed successfully", function () {
+        client.assert(response.status === 200, "Response status is not 201");
+    });
+%}
+###POST /actor --Добавление информации об актёре. (доступ user- запрещенный)
+POST http://localhost:8080/actor
+X-User-Role: user
+Content-Type: application/json
+
+{
+  "actorid":0,
+  "actorname": "John Depp",
+  "actorgender": "man",
+  "actordateofbirth": "2003-09-16T00:00:00Z"
+}
+> {%
+    client.test("Request executed successfully", function () {
+        client.assert(response.status === 201, "Response status is not 201");
+    });
+%}
+###POST /actor --Добавление информации об актёре. (доступ admin- разрешенный)
+POST http://localhost:8080/actor
+X-User-Role: admin
+Content-Type: application/json
+Content-Type: application/json
+
+{
+  "actorid":0,
+  "actorname": "John Depp",
+  "actorgender": "man",
+  "actordateofbirth": "2003-09-16T00:00:00Z"
+}
+> {%
+    client.test("Request executed successfully", function () {
+        client.assert(response.status === 200, "Response status is not 201");
+    });
+%}
