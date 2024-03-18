@@ -11,13 +11,15 @@ import (
 )
 
 const (
-	actor    = "/actor"
-	actorURL = "/actor/:uuid"
-	actors   = "/actors"
+	actor        = "/actor"
+	actorURL     = "/actor/:uuid"
+	actors       = "/actors"
+	actorsSearch = "/search/actors"
 
-	movie    = "/movie"
-	movieURL = "/movie/:uuid"
-	movies   = "/movies"
+	movie        = "/movie"
+	movieURL     = "/movie/:uuid"
+	movies       = "/movies"
+	moviesSearch = "/search/movies"
 )
 
 type handler struct {
@@ -38,6 +40,8 @@ func (h *handler) Register(router *httprouter.Router) {
 	router.PUT(movieURL, h.UpdateMovie)
 	router.DELETE(actorURL, h.DeleteActor)
 	router.DELETE(movieURL, h.DeleteMovie)
+	router.GET(actorsSearch, h.SearchMovies)
+	router.GET(moviesSearch, h.SearchActors)
 }
 
 // GetActorList получает список актёров.
@@ -339,4 +343,97 @@ func (h *handler) DeleteMovie(w http.ResponseWriter, r *http.Request, params htt
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Фильм успешно удалён"))
+}
+
+// SearchMovies выполняет поиск фильмов по фрагменту названия
+func (h *handler) SearchMovies(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		http.Error(w, "Требуется параметр запроса q", http.StatusBadRequest)
+		return
+	}
+	db := postgres.SetupDB()
+	defer func() {
+		log.Println("Закрытие бд")
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	// Поиск фильмов по фрагменту названия
+	rows, err := db.Query("SELECT * FROM movies WHERE title LIKE '%' || $1 || '%'", query)
+	if err != nil {
+		http.Error(w, "Не удалось загрузить фильмы", http.StatusInternalServerError)
+		log.Fatal(err)
+		return
+	}
+	defer rows.Close()
+	// Формирование списка фильмов
+	var movies []Movie
+	for rows.Next() {
+		var m Movie
+		if err := rows.Scan(&m.MovieID, &m.MovieName, &m.MovieDescription, &m.MovieReleaseDate, &m.MovieRating); err != nil {
+			log.Println(err)
+			continue
+		}
+		movies = append(movies, m)
+	}
+
+	// Отправка JSON-ответа
+	jsonResponse, err := json.Marshal(movies)
+	if err != nil {
+		http.Error(w, "Не удалось выстроить JSON", http.StatusInternalServerError)
+		log.Fatal(err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
+}
+
+// SearchActors выполняет поиск актёров по фрагменту имени
+func (h *handler) SearchActors(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		http.Error(w, "Требуется параметр запроса q", http.StatusBadRequest)
+		return
+	}
+	// Устанавливаем соединение с бд
+	db := postgres.SetupDB()
+	defer func() {
+		log.Println("Закрытие бд")
+		err := db.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	// Поиск актёров по фрагменту имени
+	rows, err := db.Query("SELECT * FROM actors WHERE name LIKE '%' || $1 || '%'", query)
+	if err != nil {
+		http.Error(w, "Не удалось загрузить актёров", http.StatusInternalServerError)
+		log.Fatal(err)
+		return
+	}
+	defer rows.Close()
+	// Формирование списка актёров
+	var actors []Actors
+	for rows.Next() {
+		var a Actors
+		if err := rows.Scan(&a.ActorsID, &a.ActorsName, &a.ActorsGender, &a.ActorsDateOfBirth); err != nil {
+			log.Println(err)
+			continue
+		}
+		actors = append(actors, a)
+	}
+	// Отправка JSON-ответа
+	jsonResponse, err := json.Marshal(actors)
+	if err != nil {
+		http.Error(w, "Не удалось выстроить JSON", http.StatusInternalServerError)
+		log.Fatal(err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
 }
